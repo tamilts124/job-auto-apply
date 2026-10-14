@@ -33,6 +33,8 @@ jobs:
       - name: Clone job-apply data (private)
         run: |
           git clone "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" webauto/job-apply
+          New-Item -ItemType Directory -Force -Path "D:\ClaudeDir"
+          New-Item -ItemType Junction -Path "D:\ClaudeDir\job-apply" -Target (Resolve-Path "webauto/job-apply").Path -Force
 
       - name: Clone mcp-common-server
         run: |
@@ -53,7 +55,25 @@ jobs:
           }
           $jobApplyAbs = (Resolve-Path "webauto/job-apply").Path.Replace("\", "/")
           $webautoAbs = (Resolve-Path "webauto").Path.Replace("\", "/")
-          Add-Content -Path "webauto/repos/mcp-common-server/.env" -Value "`nMCP_ROOTS=$jobApplyAbs,$webautoAbs`nMCP_ALLOW_EXEC=true`nMCP_READ_ONLY=false"
+          $roots = "$jobApplyAbs,$webautoAbs,D:/ClaudeDir"
+          $lines = Get-Content "webauto/repos/mcp-common-server/.env"
+          $hasRoots = $false
+          $newLines = $lines | ForEach-Object {
+            if ($_ -match '^\s*#?\s*MCP_ROOTS=') {
+              $hasRoots = $true
+              "MCP_ROOTS=$roots"
+            } else {
+              $_
+            }
+          }
+          if (-not $hasRoots) {
+            $newLines += "MCP_ROOTS=$roots"
+          }
+          $newLines += "MCP_ALLOW_EXEC=true"
+          $newLines += "MCP_READ_ONLY=false"
+          [System.IO.File]::WriteAllLines("webauto/repos/mcp-common-server/.env", $newLines, [System.Text.Encoding]::UTF8)
+          "MCP_ROOTS=$roots" >> $env:GITHUB_ENV
+          Write-Host "Configured MCP_ROOTS=$roots"
 
       - name: Install Node Dependencies
         working-directory: webauto/repos/mcp-common-server
