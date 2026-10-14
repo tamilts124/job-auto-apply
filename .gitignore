@@ -1,0 +1,19 @@
+# Secrets and local configurations
+.env
+*.env
+*.log
+
+# Python / Browser
+__pycache__/
+*.pyc
+browser_profile/
+
+# Data and cookies
+cookies/
+inactive_cookies/
+*.db
+*.sqlite
+chat_logs/
+logs/
+repos/
+downloads/
