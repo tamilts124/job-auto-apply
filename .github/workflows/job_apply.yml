@@ -52,13 +52,14 @@ jobs:
         working-directory: webauto/repos/mcp-common-server
         run: |
           npm install
-          npx playwright install chromium --with-deps
+          npx playwright install chromium
 
       - name: Install Python Dependencies
         working-directory: webauto
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install curl_cffi
           playwright install chromium
 
       - name: Start MCP Common Server on Port 3000
@@ -127,14 +128,27 @@ jobs:
             }
           }
 
+      - name: Prepare Artifacts for Upload
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force -Path "run_output"
+          if (Test-Path "D:\ClaudeDir\job-apply\job_applied.db") {
+            Copy-Item "D:\ClaudeDir\job-apply\job_applied.db" -Destination "run_output/" -Force
+          }
+          if (Test-Path "D:\ClaudeDir\job-apply\screenshots") {
+            Copy-Item "D:\ClaudeDir\job-apply\screenshots" -Destination "run_output/screenshots" -Recurse -Force
+          }
+          if (Test-Path "webauto/chat_logs") {
+            Copy-Item "webauto/chat_logs" -Destination "run_output/chat_logs" -Recurse -Force
+          }
+          if (Test-Path "webauto/logs") {
+            Copy-Item "webauto/logs" -Destination "run_output/logs" -Recurse -Force
+          }
+
       - name: Upload Logs & Database Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: run-artifacts
-          path: |
-            D:\ClaudeDir\job-apply\job_applied.db
-            D:\ClaudeDir\job-apply\screenshots
-            webauto/chat_logs
-            webauto/logs
+          path: run_output/
           if-no-files-found: ignore
