@@ -21,15 +21,18 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install SQLite CLI
+        run: |
+          choco install sqlite -y
+          sqlite3 --version
+
       - name: Clone claude-autopilot (private)
         run: |
           git clone "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/claude-autopilot.git" webauto
 
       - name: Clone job-apply data (private)
         run: |
-          New-Item -ItemType Directory -Force -Path "D:\ClaudeDir"
-          git clone "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" "D:\ClaudeDir\job-apply"
-          New-Item -ItemType Junction -Path "webauto/job-apply" -Target "D:\ClaudeDir\job-apply" -Force
+          git clone "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" webauto/job-apply
 
       - name: Clone mcp-common-server
         run: |
@@ -48,7 +51,9 @@ jobs:
             [System.IO.File]::WriteAllText("webauto/.env", $env:RAW_CLAUDE_ENV, [System.Text.Encoding]::UTF8)
             Write-Host "Restored webauto/.env"
           }
-          Add-Content -Path "webauto/repos/mcp-common-server/.env" -Value "`nMCP_ROOTS=D:/ClaudeDir/job-apply,D:/ClaudeDir/`nMCP_ALLOW_EXEC=true`nMCP_READ_ONLY=false"
+          $jobApplyAbs = (Resolve-Path "webauto/job-apply").Path.Replace("\", "/")
+          $webautoAbs = (Resolve-Path "webauto").Path.Replace("\", "/")
+          Add-Content -Path "webauto/repos/mcp-common-server/.env" -Value "`nMCP_ROOTS=$jobApplyAbs,$webautoAbs`nMCP_ALLOW_EXEC=true`nMCP_READ_ONLY=false"
 
       - name: Install Node Dependencies
         working-directory: webauto/repos/mcp-common-server
@@ -99,8 +104,8 @@ jobs:
       - name: Push Job Apply Updates to Private Repo
         if: always()
         run: |
-          if (Test-Path "D:\ClaudeDir\job-apply\.git") {
-            cd D:\ClaudeDir\job-apply
+          if (Test-Path "webauto\job-apply\.git") {
+            cd webauto\job-apply
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -A
@@ -140,11 +145,11 @@ jobs:
         if: always()
         run: |
           New-Item -ItemType Directory -Force -Path "run_output"
-          if (Test-Path "D:\ClaudeDir\job-apply\job_applied.db") {
-            Copy-Item "D:\ClaudeDir\job-apply\job_applied.db" -Destination "run_output/" -Force
+          if (Test-Path "webauto/job-apply/job_applied.db") {
+            Copy-Item "webauto/job-apply/job_applied.db" -Destination "run_output/" -Force
           }
-          if (Test-Path "D:\ClaudeDir\job-apply\screenshots") {
-            Copy-Item "D:\ClaudeDir\job-apply\screenshots" -Destination "run_output/screenshots" -Recurse -Force
+          if (Test-Path "webauto/job-apply/screenshots") {
+            Copy-Item "webauto/job-apply/screenshots" -Destination "run_output/screenshots" -Recurse -Force
           }
           if (Test-Path "webauto/chat_logs") {
             Copy-Item "webauto/chat_logs" -Destination "run_output/chat_logs" -Recurse -Force
