@@ -62,11 +62,18 @@ jobs:
           pip install curl_cffi requests
           playwright install chromium
 
-      - name: Start MCP Common Server on Port 3000
-        working-directory: webauto/repos/mcp-common-server
+      - name: Install Cloudflared
         run: |
-          $process = Start-Process node -ArgumentList "server-http.js", "--category=email_database,execution_process,git,write_edit,read_file_system,browser_automation" -PassThru -NoNewWindow
-          Write-Host "Started MCP server with PID: $($process.Id)"
+          Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "C:\Windows\System32\cloudflared.exe"
+          cloudflared --version
+
+      - name: Run MCP Server and Web Automation
+        working-directory: webauto
+        run: |
+          Write-Host "Starting MCP Common Server on port 3000..."
+          $mcpProcess = Start-Process node -ArgumentList "server-http.js", "--category=email_database,execution_process,git,write_edit,read_file_system,browser_automation" -WorkingDirectory "repos/mcp-common-server" -PassThru -NoNewWindow
+          Write-Host "Started MCP server with PID: $($mcpProcess.Id)"
+
           $ready = $false
           for ($i = 0; $i -lt 30; $i++) {
             Start-Sleep -Seconds 1
@@ -85,10 +92,12 @@ jobs:
             exit 1
           }
 
-      - name: Run Web Automation
-        working-directory: webauto
-        run: |
-          python main.py --delete-all-old-chats --reuse-cookies --no-reuse-cookies-exit --modal "sonnet 4.6" --model-thinking no --model-efficiency low --carry-last-responses 1 --UniMail --session-loop --input .\prompts\job_apply_naukri.txt --recursive --mcp-running-port 3000
+          try {
+            python main.py --delete-all-old-chats --reuse-cookies --no-reuse-cookies-exit --modal "sonnet 4.6" --model-thinking no --model-efficiency low --carry-last-responses 1 --UniMail --session-loop --input .\prompts\job_apply_naukri.txt --recursive --mcp-running-port 3000 --tunnel cloudflared
+          } finally {
+            Write-Host "Stopping MCP server (PID: $($mcpProcess.Id))..."
+            Stop-Process -Id $mcpProcess.Id -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Push Job Apply Updates to Private Repo
         if: always()
@@ -102,6 +111,7 @@ jobs:
             if ($status) {
               Write-Host "Detected changes in job-apply data. Pushing to private repo..."
               git commit -m "Auto-update job applied db & cookies [skip ci]"
+              git pull --rebase "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" main
               git push "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" HEAD:main
               Write-Host "Successfully pushed updates to job-apply."
             } else {
@@ -121,6 +131,7 @@ jobs:
             if ($status) {
               Write-Host "Detected changes in claude-autopilot. Pushing to private repo..."
               git commit -m "Auto-update session cookies and states [skip ci]"
+              git pull --rebase "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/claude-autopilot.git" main
               git push "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/claude-autopilot.git" HEAD:main
               Write-Host "Successfully pushed updates to claude-autopilot."
             } else {
