@@ -88,7 +88,7 @@ jobs:
       - name: Run Web Automation
         working-directory: webauto
         run: |
-          python main.py --delete-all-old-chats --reuse-cookies --modal "sonnet 4.6" --model-thinking no --model-efficiency low --carry-last-responses 1 --UniMail --session-loop --input .\prompts\job_apply_naukri.txt --recursive --mcp-running-port 3000
+          python main.py --delete-all-old-chats --reuse-cookies --no-reuse-cookies-exit --modal "sonnet 4.6" --model-thinking no --model-efficiency low --carry-last-responses 1 --UniMail --session-loop --input .\prompts\job_apply_naukri.txt --recursive --mcp-running-port 3000
 
       - name: Push Job Apply Updates to Private Repo
         if: always()
