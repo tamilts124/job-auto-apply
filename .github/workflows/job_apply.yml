@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,6 +29,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "D:\ClaudeDir"
           git clone "https://${{ secrets.PRIVATE_REPO_TOKEN }}@github.com/tamilts124/job-apply.git" "D:\ClaudeDir\job-apply"
+          New-Item -ItemType Junction -Path "webauto/job-apply" -Target "D:\ClaudeDir\job-apply" -Force
 
       - name: Clone mcp-common-server
         run: |
@@ -47,6 +48,7 @@ jobs:
             [System.IO.File]::WriteAllText("webauto/.env", $env:RAW_CLAUDE_ENV, [System.Text.Encoding]::UTF8)
             Write-Host "Restored webauto/.env"
           }
+          Add-Content -Path "webauto/repos/mcp-common-server/.env" -Value "`nMCP_ROOTS=D:/ClaudeDir/job-apply,D:/ClaudeDir/`nMCP_ALLOW_EXEC=true`nMCP_READ_ONLY=false"
 
       - name: Install Node Dependencies
         working-directory: webauto/repos/mcp-common-server
